@@ -1,0 +1,202 @@
+{
+  "name": "Reply Tracking - Anakin Assignment",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "filters": {
+          "readStatus": "unread"
+        },
+        "options": {
+          "downloadAttachments": false
+        }
+      },
+      "id": "gmail-trigger",
+      "name": "Gmail Trigger",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-1",
+              "leftValue": "={{ $json.from }}",
+              "rightValue": "kotharitosh@gmail.com",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            },
+            {
+              "id": "condition-2",
+              "leftValue": "={{ $json.from }}",
+              "rightValue": "viral.patel@anakinai.com",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            },
+            {
+              "id": "condition-3",
+              "leftValue": "={{ $json.from }}",
+              "rightValue": "viral.sensehawk@gmail.com",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "or"
+        }
+      },
+      "id": "filter-node",
+      "name": "Is Reply from Anakin Contact?",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "resource": "contact",
+        "operation": "search",
+        "filterGroups": {
+          "filterGroupsUi": {
+            "filterGroupValues": [
+              {
+                "filters": {
+                  "filtersUi": {
+                    "filterValues": [
+                      {
+                        "propertyName": "email",
+                        "operator": "EQ",
+                        "value": "={{ $json.from.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}/)[0] }}"
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "id": "hubspot-find",
+      "name": "Find Contact in HubSpot",
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2,
+      "position": [750, 300]
+    },
+    {
+      "parameters": {
+        "resource": "contact",
+        "operation": "update",
+        "contactId": "={{ $json.id }}",
+        "additionalFields": {
+          "properties": [
+            {
+              "name": "hs_lead_status",
+              "value": "IN_PROGRESS"
+            }
+          ]
+        }
+      },
+      "id": "hubspot-update",
+      "name": "Update Contact - Reply Received",
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2,
+      "position": [1000, 300]
+    },
+    {
+      "parameters": {
+        "resource": "engagement",
+        "operation": "create",
+        "type": "EMAIL",
+        "metadata": {
+          "metadataValues": {
+            "from": {
+              "email": "={{ $('Gmail Trigger').item.json.from }}"
+            },
+            "to": [
+              {
+                "email": "myselfgopie@gmail.com"
+              }
+            ],
+            "subject": "={{ $('Gmail Trigger').item.json.subject }}",
+            "body": "={{ $('Gmail Trigger').item.json.text }}"
+          }
+        },
+        "additionalFields": {
+          "contactIds": "={{ $('Find Contact in HubSpot').item.json.id }}"
+        }
+      },
+      "id": "hubspot-log",
+      "name": "Log Reply in HubSpot",
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2,
+      "position": [1250, 300]
+    }
+  ],
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Is Reply from Anakin Contact?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Reply from Anakin Contact?": {
+      "main": [
+        [
+          {
+            "node": "Find Contact in HubSpot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Contact in HubSpot": {
+      "main": [
+        [
+          {
+            "node": "Update Contact - Reply Received",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Contact - Reply Received": {
+      "main": [
+        [
+          {
+            "node": "Log Reply in HubSpot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
